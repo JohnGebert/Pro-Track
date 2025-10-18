@@ -1,0 +1,411 @@
+@model ProTrack.Controllers.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-tachometer-alt text-primary me-2"></i>Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">Welcome to your freelance project tracking center</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Last updated: @DateTime.Now.ToString("MMM dd, yyyy 'at' h:mm tt")</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <!-- Total Clients -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Clients
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalClients</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Projects -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Projects
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalProjects</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Projects -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Active Projects
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.ActiveProjects</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-play-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unbilled Hours -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Unbilled Hours
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.UnbilledHours.ToString("F1")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Overview -->
+    <div class="row mb-4">
+        <!-- Total Revenue -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Revenue
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">$@Model.TotalRevenue.ToString("N2")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Revenue -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Revenue
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">$@Model.PendingRevenue.ToString("N2")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hourglass-half fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unpaid Invoices -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Unpaid Invoices
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.UnpaidInvoices</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-invoice fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <!-- Recent Clients -->
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-users me-2"></i>Recent Clients
+                    </h6>
+                    <a asp-controller="Clients" asp-action="Index" class="btn btn-sm btn-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentClients.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var client in Model.RecentClients)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <div>
+                                        <div class="fw-bold">@client.Name</div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
+                                            @client.CreatedDate.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">@client.ProjectCount projects</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-3">
+                            <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No clients yet</p>
+                            <a asp-controller="Clients" asp-action="Create" class="btn btn-sm btn-primary mt-2">
+                                Add First Client
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Projects -->
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-project-diagram me-2"></i>Recent Projects
+                    </h6>
+                    <a asp-controller="Projects" asp-action="Index" class="btn btn-sm btn-success">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentProjects.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var project in Model.RecentProjects)
+                            {
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">@project.Title</div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>@project.ClientName
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-@(project.Status.ToString().ToLower() == "active" ? "success" : project.Status.ToString().ToLower() == "completed" ? "info" : "warning")">
+                                            @project.Status
+                                        </span>
+                                    </div>
+                                    <div class="mt-1">
+                                        <small class="text-muted">
+                                            <i class="fas fa-dollar-sign me-1"></i>$@project.HourlyRate.ToString("N2")/hr
+                                        </small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-3">
+                            <i class="fas fa-project-diagram fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No projects yet</p>
+                            <a asp-controller="Projects" asp-action="Create" class="btn btn-sm btn-success mt-2">
+                                Create First Project
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Time Entries -->
+        <div class="col-xl-4 col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-clock me-2"></i>Recent Time Entries
+                    </h6>
+                    <a asp-controller="TimeEntries" asp-action="Index" class="btn btn-sm btn-info">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentTimeEntries.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var entry in Model.RecentTimeEntries)
+                            {
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold">@entry.Description</div>
+                                            <small class="text-muted">
+                                                <i class="fas fa-project-diagram me-1"></i>@entry.ProjectTitle
+                                            </small>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>@entry.ClientName
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-@(entry.IsBilled ? "success" : "warning")">
+                                                @(entry.IsBilled ? "Billed" : "Unbilled")
+                                            </span>
+                                            <div class="mt-1">
+                                                <small class="text-muted">
+                                                    @entry.Duration.ToString("F1")h
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-3">
+                            <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No time entries yet</p>
+                            <a asp-controller="TimeEntries" asp-action="Create" class="btn btn-sm btn-info mt-2">
+                                Log First Entry
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a asp-controller="Clients" asp-action="Create" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Add Client
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a asp-controller="Projects" asp-action="Create" class="btn btn-outline-success w-100">
+                                <i class="fas fa-plus me-2"></i>Create Project
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a asp-controller="TimeEntries" asp-action="Create" class="btn btn-outline-info w-100">
+                                <i class="fas fa-stopwatch me-2"></i>Log Time
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a asp-controller="Invoices" asp-action="Create" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-file-invoice me-2"></i>Create Invoice
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* Custom styles for dashboard cards */
+        .border-left-primary {
+            border-left: 0.25rem solid #4e73df !important;
+        }
+        .border-left-success {
+            border-left: 0.25rem solid #1cc88a !important;
+        }
+        .border-left-info {
+            border-left: 0.25rem solid #36b9cc !important;
+        }
+        .border-left-warning {
+            border-left: 0.25rem solid #f6c23e !important;
+        }
+        .border-left-danger {
+            border-left: 0.25rem solid #e74a3b !important;
+        }
+
+        .text-xs {
+            font-size: 0.7rem;
+        }
+
+        .font-weight-bold {
+            font-weight: 700 !important;
+        }
+
+        .text-gray-800 {
+            color: #5a5c69 !important;
+        }
+
+        .text-gray-300 {
+            color: #dddfeb !important;
+        }
+
+        .card {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+        }
+
+        .list-group-item {
+            border: none;
+            padding: 0.75rem 0;
+        }
+
+        .list-group-item:first-child {
+            padding-top: 0;
+        }
+
+        .list-group-item:last-child {
+            padding-bottom: 0;
+        }
+    </style>
+}

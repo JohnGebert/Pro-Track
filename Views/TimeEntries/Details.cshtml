@@ -1,0 +1,65 @@
+@model ProTrack.Models.TimeEntry
+
+@{
+    ViewData["Title"] = "Time Entry Details";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>@ViewData["Title"]
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Project</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.Project.Title)</dd>
+
+                        <dt class="col-sm-3">Client</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.Project.Client.Name)</dd>
+
+                        <dt class="col-sm-3">Start Time</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.StartTime)</dd>
+
+                        <dt class="col-sm-3">End Time</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.EndTime)</dd>
+
+                        <dt class="col-sm-3">Duration</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.DurationInHours) hours</dd>
+
+                        <dt class="col-sm-3">Billed Status</dt>
+                        <dd class="col-sm-9">
+                            @if (Model.IsBilled)
+                            {
+                                <span class="badge bg-success">Billed</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Unbilled</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Description</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.Description)</dd>
+
+                        <dt class="col-sm-3">Created Date</dt>
+                        <dd class="col-sm-9">@Html.DisplayFor(model => model.CreatedDate)</dd>
+                    </dl>
+
+                    <div class="mt-4">
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-info">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
