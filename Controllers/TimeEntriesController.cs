@@ -24,20 +24,40 @@ namespace ProTrack.Controllers
         }
 
         /// <summary>
-        /// Display list of time entries for the current user
+        /// Display list of time entries for the current user with optional search functionality
+        /// Supports wildcard search using * for any characters
         /// </summary>
+        /// <param name="searchTerm">Optional search term to filter time entries (supports * wildcard)</param>
         /// <returns>Time entries index view</returns>
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchTerm)
         {
             try
             {
                 var userId = GetCurrentUserId();
                 
                 // Get time entries with related project and client information
-                var timeEntries = await _context.TimeEntries
+                var timeEntriesQuery = _context.TimeEntries
                     .Include(te => te.Project)
                     .ThenInclude(p => p.Client)
-                    .Where(te => te.UserId == userId)
+                    .Where(te => te.UserId == userId);
+
+                // Apply search filter if search term is provided
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    // Convert wildcard * to SQL LIKE pattern %
+                    string searchPattern = searchTerm.Replace("*", "%");
+                    
+                    // Search across multiple fields: Description, Project Title, Client Name
+                    timeEntriesQuery = timeEntriesQuery.Where(te =>
+                        EF.Functions.Like(te.Description ?? "", $"%{searchPattern}%") ||
+                        EF.Functions.Like(te.Project.Title, $"%{searchPattern}%") ||
+                        EF.Functions.Like(te.Project.Client.Name, $"%{searchPattern}%")
+                    );
+                    
+                    ViewBag.SearchTerm = searchTerm;
+                }
+
+                var timeEntries = await timeEntriesQuery
                     .OrderByDescending(te => te.StartTime)
                     .ToListAsync();
 

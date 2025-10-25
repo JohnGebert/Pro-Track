@@ -24,20 +24,40 @@ namespace ProTrack.Controllers
         }
 
         /// <summary>
-        /// Display list of invoices for the current user
+        /// Display list of invoices for the current user with optional search functionality
+        /// Supports wildcard search using * for any characters
         /// </summary>
+        /// <param name="searchTerm">Optional search term to filter invoices (supports * wildcard)</param>
         /// <returns>Invoices index view</returns>
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchTerm)
         {
             try
             {
                 var userId = GetCurrentUserId();
                 
                 // Get invoices with related client information
-                var invoices = await _context.Invoices
+                var invoicesQuery = _context.Invoices
                     .Include(i => i.Client)
                     .Include(i => i.TimeEntries)
-                    .Where(i => i.UserId == userId)
+                    .Where(i => i.UserId == userId);
+
+                // Apply search filter if search term is provided
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    // Convert wildcard * to SQL LIKE pattern %
+                    string searchPattern = searchTerm.Replace("*", "%");
+                    
+                    // Search across multiple fields: Invoice Number, Client Name, Notes
+                    invoicesQuery = invoicesQuery.Where(i =>
+                        EF.Functions.Like(i.InvoiceNumber, $"%{searchPattern}%") ||
+                        EF.Functions.Like(i.Client.Name, $"%{searchPattern}%") ||
+                        EF.Functions.Like(i.Notes ?? "", $"%{searchPattern}%")
+                    );
+                    
+                    ViewBag.SearchTerm = searchTerm;
+                }
+
+                var invoices = await invoicesQuery
                     .OrderByDescending(i => i.InvoiceDate)
                     .ToListAsync();
 

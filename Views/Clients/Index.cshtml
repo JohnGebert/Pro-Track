@@ -31,6 +31,41 @@
                 </div>
             }
 
+            <!-- Search Bar -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form asp-action="Index" method="get" class="row g-3">
+                        <div class="col-md-10">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="searchTerm" 
+                                       value="@ViewBag.SearchTerm" 
+                                       placeholder="Search clients by name, email, phone, address, or notes (use * for wildcard)" />
+                            </div>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                <strong>Search Instructions:</strong> Enter keywords to search. Use * as a wildcard (e.g., "*Corp" finds "Acme Corp", "Tech Corp", etc.)
+                            </small>
+                        </div>
+                        <div class="col-md-2 d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
+                            {
+                                <a asp-action="Index" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            }
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Clients Table -->
             <div class="card">
                 <div class="card-header">
@@ -39,6 +74,10 @@
                             <h5 class="mb-0">
                                 <i class="fas fa-list"></i> Client List
                                 <span class="badge bg-secondary ms-2">@Model.Count()</span>
+                                @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
+                                {
+                                    <span class="badge bg-info ms-2">Filtered</span>
+                                }
                             </h5>
                         </div>
                         <div class="col-md-6 text-end">

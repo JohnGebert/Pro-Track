@@ -24,19 +24,39 @@ namespace ProTrack.Controllers
         }
 
         /// <summary>
-        /// Display list of projects for the current user
+        /// Display list of projects for the current user with optional search functionality
+        /// Supports wildcard search using * for any characters
         /// </summary>
+        /// <param name="searchTerm">Optional search term to filter projects (supports * wildcard)</param>
         /// <returns>Projects index view</returns>
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchTerm)
         {
             try
             {
                 var userId = GetCurrentUserId();
                 
                 // Get projects with related client information
-                var projects = await _context.Projects
+                var projectsQuery = _context.Projects
                     .Include(p => p.Client)
-                    .Where(p => p.UserId == userId)
+                    .Where(p => p.UserId == userId);
+
+                // Apply search filter if search term is provided
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    // Convert wildcard * to SQL LIKE pattern %
+                    string searchPattern = searchTerm.Replace("*", "%");
+                    
+                    // Search across multiple fields: Title, Description, Client Name
+                    projectsQuery = projectsQuery.Where(p =>
+                        EF.Functions.Like(p.Title, $"%{searchPattern}%") ||
+                        EF.Functions.Like(p.Description ?? "", $"%{searchPattern}%") ||
+                        EF.Functions.Like(p.Client.Name, $"%{searchPattern}%")
+                    );
+                    
+                    ViewBag.SearchTerm = searchTerm;
+                }
+
+                var projects = await projectsQuery
                     .OrderByDescending(p => p.CreatedDate)
                     .ToListAsync();
 

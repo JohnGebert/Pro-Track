@@ -88,13 +88,13 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li>
-                                    <a class="dropdown-item" href="#" onclick="showProfileModal()">
+                                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
                                         <i class="fas fa-user me-2"></i>Profile
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="#" onclick="showSettingsModal()">
-                                        <i class="fas fa-cog me-2"></i>Settings
+                                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+                                        <i class="fas fa-key me-2"></i>Change Password
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
@@ -192,15 +192,6 @@
             });
         }, 5000);
 
-        // Show profile modal (placeholder)
-        function showProfileModal() {
-            alert('Profile functionality coming soon!');
-        }
-
-        // Show settings modal (placeholder)
-        function showSettingsModal() {
-            alert('Settings functionality coming soon!');
-        }
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

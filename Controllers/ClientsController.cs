@@ -18,12 +18,39 @@ namespace ProTrack.Controllers
             _context = context;
         }
 
-        // GET: Clients
-        public async Task<IActionResult> Index()
+        /// <summary>
+        /// Display list of clients for the current user with optional search functionality
+        /// Supports wildcard search using * for any characters
+        /// </summary>
+        /// <param name="searchTerm">Optional search term to filter clients (supports * wildcard)</param>
+        /// <returns>Clients index view</returns>
+        public async Task<IActionResult> Index(string searchTerm)
         {
             var userId = GetCurrentUserId();
-            var clients = await _context.Clients
-                .Where(c => c.UserId == userId && c.IsActive)
+            
+            // Start with base query for active clients
+            var clientsQuery = _context.Clients
+                .Where(c => c.UserId == userId && c.IsActive);
+
+            // Apply search filter if search term is provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Convert wildcard * to SQL LIKE pattern %
+                string searchPattern = searchTerm.Replace("*", "%");
+                
+                // Search across multiple fields: Name, Email, Phone, Address, Notes
+                clientsQuery = clientsQuery.Where(c =>
+                    EF.Functions.Like(c.Name, $"%{searchPattern}%") ||
+                    EF.Functions.Like(c.ContactEmail ?? "", $"%{searchPattern}%") ||
+                    EF.Functions.Like(c.PhoneNumber ?? "", $"%{searchPattern}%") ||
+                    EF.Functions.Like(c.Address ?? "", $"%{searchPattern}%") ||
+                    EF.Functions.Like(c.Notes ?? "", $"%{searchPattern}%")
+                );
+                
+                ViewBag.SearchTerm = searchTerm;
+            }
+
+            var clients = await clientsQuery
                 .OrderBy(c => c.Name)
                 .ToListAsync();
 
