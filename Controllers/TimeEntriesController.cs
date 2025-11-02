@@ -8,9 +8,7 @@ using System.Security.Claims;
 
 namespace ProTrack.Controllers
 {
-    /// <summary>
     /// Time entries controller handling time tracking functionality
-    /// </summary>
     [Authorize]
     public class TimeEntriesController : Controller
     {
@@ -22,11 +20,8 @@ namespace ProTrack.Controllers
             _context = context;
             _logger = logger;
         }
-
-        /// <summary>
         /// Display list of time entries for the current user with optional search functionality
         /// Supports wildcard search using * for any characters
-        /// </summary>
         /// <param name="searchTerm">Optional search term to filter time entries (supports * wildcard)</param>
         /// <returns>Time entries index view</returns>
         public async Task<IActionResult> Index(string searchTerm)
@@ -44,14 +39,18 @@ namespace ProTrack.Controllers
                 // Apply search filter if search term is provided
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    // Convert wildcard * to SQL LIKE pattern %
-                    string searchPattern = searchTerm.Replace("*", "%");
+                    // Sanitize search term: convert wildcard * to SQL LIKE pattern %, escape SQL wildcards
+                    string sanitizedTerm = searchTerm
+                        .Replace("%", "[%]")
+                        .Replace("_", "[_]")
+                        .Replace("[", "[[]")
+                        .Replace("*", "%");
                     
                     // Search across multiple fields: Description, Project Title, Client Name
                     timeEntriesQuery = timeEntriesQuery.Where(te =>
-                        EF.Functions.Like(te.Description ?? "", $"%{searchPattern}%") ||
-                        EF.Functions.Like(te.Project.Title, $"%{searchPattern}%") ||
-                        EF.Functions.Like(te.Project.Client.Name, $"%{searchPattern}%")
+                        EF.Functions.Like(te.Description ?? "", $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(te.Project.Title, $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(te.Project.Client.Name, $"%{sanitizedTerm}%")
                     );
                     
                     ViewBag.SearchTerm = searchTerm;
@@ -70,10 +69,7 @@ namespace ProTrack.Controllers
                 return View(new List<TimeEntry>());
             }
         }
-
-        /// <summary>
         /// Display time entry details
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>Time entry details view</returns>
         public async Task<IActionResult> Details(int? id)
@@ -106,10 +102,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Display create time entry form
-        /// </summary>
         /// <returns>Create time entry view</returns>
         public async Task<IActionResult> Create()
         {
@@ -135,10 +128,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Create new time entry
-        /// </summary>
         /// <param name="timeEntry">Time entry data</param>
         /// <returns>Redirect to time entries index</returns>
         [HttpPost]
@@ -202,10 +192,7 @@ namespace ProTrack.Controllers
 
             return View(timeEntry);
         }
-
-        /// <summary>
         /// Display edit time entry form
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>Edit time entry view</returns>
         public async Task<IActionResult> Edit(int? id)
@@ -245,10 +232,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Update time entry
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <param name="timeEntry">Updated time entry data</param>
         /// <returns>Redirect to time entries index</returns>
@@ -329,10 +313,7 @@ namespace ProTrack.Controllers
 
             return View(timeEntry);
         }
-
-        /// <summary>
         /// Display delete confirmation
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>Delete confirmation view</returns>
         public async Task<IActionResult> Delete(int? id)
@@ -365,10 +346,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Delete time entry
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>Redirect to time entries index</returns>
         [HttpPost, ActionName("Delete")]
@@ -398,10 +376,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Toggle billed status of time entry
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>JSON result</returns>
         [HttpPost]
@@ -437,10 +412,7 @@ namespace ProTrack.Controllers
                 return Json(new { success = false, message = "An error occurred while updating the time entry." });
             }
         }
-
-        /// <summary>
         /// Check if time entry exists for current user
-        /// </summary>
         /// <param name="id">Time entry ID</param>
         /// <returns>True if time entry exists</returns>
         private bool TimeEntryExists(int id)
@@ -448,10 +420,7 @@ namespace ProTrack.Controllers
             var userId = GetCurrentUserId();
             return _context.TimeEntries.Any(e => e.Id == id && e.UserId == userId);
         }
-
-        /// <summary>
         /// Get current user ID from claims
-        /// </summary>
         /// <returns>Current user ID</returns>
         private string GetCurrentUserId()
         {

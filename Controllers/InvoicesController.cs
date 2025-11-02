@@ -5,12 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using ProTrack.Data;
 using ProTrack.Models;
 using System.Security.Claims;
+using System.Linq;
 
 namespace ProTrack.Controllers
 {
-    /// <summary>
     /// Invoices controller handling invoice management functionality
-    /// </summary>
     [Authorize]
     public class InvoicesController : Controller
     {
@@ -23,10 +22,8 @@ namespace ProTrack.Controllers
             _logger = logger;
         }
 
-        /// <summary>
         /// Display list of invoices for the current user with optional search functionality
         /// Supports wildcard search using * for any characters
-        /// </summary>
         /// <param name="searchTerm">Optional search term to filter invoices (supports * wildcard)</param>
         /// <returns>Invoices index view</returns>
         public async Task<IActionResult> Index(string searchTerm)
@@ -44,14 +41,18 @@ namespace ProTrack.Controllers
                 // Apply search filter if search term is provided
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    // Convert wildcard * to SQL LIKE pattern %
-                    string searchPattern = searchTerm.Replace("*", "%");
+                    // Sanitize search term: convert wildcard * to SQL LIKE pattern %, escape SQL wildcards
+                    string sanitizedTerm = searchTerm
+                        .Replace("%", "[%]")
+                        .Replace("_", "[_]")
+                        .Replace("[", "[[]")
+                        .Replace("*", "%");
                     
                     // Search across multiple fields: Invoice Number, Client Name, Notes
                     invoicesQuery = invoicesQuery.Where(i =>
-                        EF.Functions.Like(i.InvoiceNumber, $"%{searchPattern}%") ||
-                        EF.Functions.Like(i.Client.Name, $"%{searchPattern}%") ||
-                        EF.Functions.Like(i.Notes ?? "", $"%{searchPattern}%")
+                        EF.Functions.Like(i.InvoiceNumber, $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(i.Client.Name, $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(i.Notes ?? "", $"%{sanitizedTerm}%")
                     );
                     
                     ViewBag.SearchTerm = searchTerm;
@@ -70,10 +71,7 @@ namespace ProTrack.Controllers
                 return View(new List<Invoice>());
             }
         }
-
-        /// <summary>
         /// Display invoice details
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>Invoice details view</returns>
         public async Task<IActionResult> Details(int? id)
@@ -107,10 +105,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Display create invoice form
-        /// </summary>
         /// <returns>Create invoice view</returns>
         public async Task<IActionResult> Create()
         {
@@ -145,10 +140,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Create new invoice
-        /// </summary>
         /// <param name="invoice">Invoice data</param>
         /// <returns>Redirect to invoices index</returns>
         [HttpPost]
@@ -207,10 +199,7 @@ namespace ProTrack.Controllers
 
             return View(invoice);
         }
-
-        /// <summary>
         /// Display edit invoice form
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>Edit invoice view</returns>
         public async Task<IActionResult> Edit(int? id)
@@ -249,16 +238,13 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Update invoice
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <param name="invoice">Updated invoice data</param>
         /// <returns>Redirect to invoices index</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ClientId,InvoiceDate,DueDate,TotalAmount,Notes,InvoiceNumber,UserId,CreatedDate")] Invoice invoice)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,ClientId,InvoiceDate,DueDate,TotalAmount,Notes,InvoiceNumber,UserId,CreatedDate,IsPaid,PaymentDate")] Invoice invoice)
         {
             if (id != invoice.Id)
             {
@@ -270,6 +256,26 @@ namespace ProTrack.Controllers
             {
                 return Forbid();
             }
+
+            // Read IsPaid directly from form to ensure we get the checkbox value
+            // When checkbox is checked, it submits "true", when unchecked, it doesn't submit (or submits false)
+            bool isPaid = false;
+            if (Request.Form.ContainsKey("IsPaid"))
+            {
+                var isPaidValues = Request.Form["IsPaid"];
+                // Check if any of the values is "true"
+                if (isPaidValues.Count > 0)
+                {
+                    isPaid = isPaidValues.Any(v => !string.IsNullOrEmpty(v) && v.Equals("true", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            
+            // Debug: Log the received values
+            _logger.LogInformation("Edit POST - Invoice ID: {Id}, IsPaid from form: {IsPaid}, Invoice.IsPaid model: {InvoiceIsPaid}, PaymentDate: {PaymentDate}", 
+                invoice.Id, isPaid, invoice.IsPaid, invoice.PaymentDate);
+            
+            // Override invoice.IsPaid with the value from the form
+            invoice.IsPaid = isPaid;
 
             if (ModelState.IsValid)
             {
@@ -285,8 +291,48 @@ namespace ProTrack.Controllers
                     }
                     else
                     {
-                        invoice.LastModified = DateTime.UtcNow;
-                        _context.Update(invoice);
+                        // Fetch the existing invoice from database to avoid tracking issues
+                        var existingInvoice = await _context.Invoices
+                            .FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
+                        
+                        if (existingInvoice == null)
+                        {
+                            return NotFound();
+                        }
+                        
+                        // Update properties
+                        existingInvoice.ClientId = invoice.ClientId;
+                        existingInvoice.InvoiceDate = invoice.InvoiceDate;
+                        existingInvoice.DueDate = invoice.DueDate;
+                        existingInvoice.TotalAmount = invoice.TotalAmount;
+                        existingInvoice.Notes = invoice.Notes;
+                        existingInvoice.InvoiceNumber = invoice.InvoiceNumber;
+                        existingInvoice.LastModified = DateTime.UtcNow;
+                        
+                        // Update payment status - use the value we calculated from form
+                        _logger.LogInformation("Updating invoice {InvoiceId}: IsPaid from form = {IsPaid}, Invoice.IsPaid = {InvoiceIsPaid}, Current DB = {Current}", 
+                            id, isPaid, invoice.IsPaid, existingInvoice.IsPaid);
+                        existingInvoice.IsPaid = isPaid; // Use the form value we calculated earlier
+                        
+                        // If marked as paid and no payment date, set it to today
+                        if (isPaid && !invoice.PaymentDate.HasValue)
+                        {
+                            existingInvoice.PaymentDate = DateTime.UtcNow;
+                            _logger.LogInformation("Setting payment date to today for invoice {InvoiceId}", id);
+                        }
+                        // If payment date was manually set, use it
+                        else if (invoice.PaymentDate.HasValue)
+                        {
+                            existingInvoice.PaymentDate = invoice.PaymentDate;
+                            _logger.LogInformation("Using manually set payment date {PaymentDate} for invoice {InvoiceId}", invoice.PaymentDate, id);
+                        }
+                        // If marked as unpaid, clear payment date
+                        else if (!isPaid)
+                        {
+                            existingInvoice.PaymentDate = null;
+                            _logger.LogInformation("Clearing payment date for unpaid invoice {InvoiceId}", id);
+                        }
+                        
                         await _context.SaveChangesAsync();
                         
                         TempData["SuccessMessage"] = "Invoice updated successfully.";
@@ -328,10 +374,7 @@ namespace ProTrack.Controllers
 
             return View(invoice);
         }
-
-        /// <summary>
         /// Display delete confirmation
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>Delete confirmation view</returns>
         public async Task<IActionResult> Delete(int? id)
@@ -364,10 +407,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Delete invoice
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>Redirect to invoices index</returns>
         [HttpPost, ActionName("Delete")]
@@ -397,10 +437,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Toggle paid status of invoice
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>JSON result</returns>
         [HttpPost]
@@ -438,10 +475,7 @@ namespace ProTrack.Controllers
                 return Json(new { success = false, message = "An error occurred while updating the invoice." });
             }
         }
-
-        /// <summary>
         /// Generate invoice from time entries
-        /// </summary>
         /// <param name="clientId">Client ID</param>
         /// <param name="projectId">Project ID (optional)</param>
         /// <param name="startDate">Start date for time entries</param>
@@ -505,10 +539,7 @@ namespace ProTrack.Controllers
                 return Json(new { success = false, message = "An error occurred while generating the invoice data." });
             }
         }
-
-        /// <summary>
         /// Generate next invoice number
-        /// </summary>
         /// <param name="userId">User ID</param>
         /// <returns>Next invoice number</returns>
         private async Task<string> GenerateNextInvoiceNumber(string userId)
@@ -534,10 +565,7 @@ namespace ProTrack.Controllers
 
             return $"{prefix}001";
         }
-
-        /// <summary>
         /// Check if invoice exists for current user
-        /// </summary>
         /// <param name="id">Invoice ID</param>
         /// <returns>True if invoice exists</returns>
         private bool InvoiceExists(int id)
@@ -545,10 +573,7 @@ namespace ProTrack.Controllers
             var userId = GetCurrentUserId();
             return _context.Invoices.Any(e => e.Id == id && e.UserId == userId);
         }
-
-        /// <summary>
         /// Get current user ID from claims
-        /// </summary>
         /// <returns>Current user ID</returns>
         private string GetCurrentUserId()
         {

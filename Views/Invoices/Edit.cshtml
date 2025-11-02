@@ -65,7 +65,8 @@
                             <div class="col-md-6">
                                 <label class="form-label">Payment Status</label>
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" asp-for="IsPaid" id="isPaidCheckbox" />
+                                    <input type="hidden" name="IsPaid" value="false" />
+                                    <input class="form-check-input" type="checkbox" name="IsPaid" id="isPaidCheckbox" value="true" @(Model.IsPaid ? "checked" : "") />
                                     <label class="form-check-label" for="isPaidCheckbox">
                                         Mark as Paid
                                     </label>

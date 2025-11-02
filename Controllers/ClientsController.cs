@@ -12,16 +12,15 @@ namespace ProTrack.Controllers
     public class ClientsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<ClientsController> _logger;
 
-        public ClientsController(ApplicationDbContext context)
+        public ClientsController(ApplicationDbContext context, ILogger<ClientsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
-
-        /// <summary>
         /// Display list of clients for the current user with optional search functionality
         /// Supports wildcard search using * for any characters
-        /// </summary>
         /// <param name="searchTerm">Optional search term to filter clients (supports * wildcard)</param>
         /// <returns>Clients index view</returns>
         public async Task<IActionResult> Index(string searchTerm)
@@ -35,16 +34,21 @@ namespace ProTrack.Controllers
             // Apply search filter if search term is provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                // Convert wildcard * to SQL LIKE pattern %
-                string searchPattern = searchTerm.Replace("*", "%");
+                // Sanitize search term: convert wildcard * to SQL LIKE pattern %, escape SQL wildcards
+                // Remove dangerous characters that could break SQL LIKE patterns
+                string sanitizedTerm = searchTerm
+                    .Replace("%", "[%]")
+                    .Replace("_", "[_]")
+                    .Replace("[", "[[]")
+                    .Replace("*", "%");
                 
                 // Search across multiple fields: Name, Email, Phone, Address, Notes
                 clientsQuery = clientsQuery.Where(c =>
-                    EF.Functions.Like(c.Name, $"%{searchPattern}%") ||
-                    EF.Functions.Like(c.ContactEmail ?? "", $"%{searchPattern}%") ||
-                    EF.Functions.Like(c.PhoneNumber ?? "", $"%{searchPattern}%") ||
-                    EF.Functions.Like(c.Address ?? "", $"%{searchPattern}%") ||
-                    EF.Functions.Like(c.Notes ?? "", $"%{searchPattern}%")
+                    EF.Functions.Like(c.Name, $"%{sanitizedTerm}%") ||
+                    EF.Functions.Like(c.ContactEmail ?? "", $"%{sanitizedTerm}%") ||
+                    EF.Functions.Like(c.PhoneNumber ?? "", $"%{sanitizedTerm}%") ||
+                    EF.Functions.Like(c.Address ?? "", $"%{sanitizedTerm}%") ||
+                    EF.Functions.Like(c.Notes ?? "", $"%{sanitizedTerm}%")
                 );
                 
                 ViewBag.SearchTerm = searchTerm;
@@ -92,14 +96,22 @@ namespace ProTrack.Controllers
         {
             if (ModelState.IsValid)
             {
-                var userId = GetCurrentUserId();
-                client.UserId = userId;
-                client.CreatedDate = DateTime.UtcNow;
+                try
+                {
+                    var userId = GetCurrentUserId();
+                    client.UserId = userId;
+                    client.CreatedDate = DateTime.UtcNow;
 
-                _context.Add(client);
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "Client created successfully.";
-                return RedirectToAction(nameof(Index));
+                    _context.Add(client);
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Client created successfully.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating client for user {UserId}", GetCurrentUserId());
+                    TempData["ErrorMessage"] = "An error occurred while creating the client.";
+                }
             }
             return View(client);
         }
@@ -147,6 +159,7 @@ namespace ProTrack.Controllers
                     _context.Update(client);
                     await _context.SaveChangesAsync();
                     TempData["SuccessMessage"] = "Client updated successfully.";
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -159,7 +172,11 @@ namespace ProTrack.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error updating client {ClientId} for user {UserId}", id, GetCurrentUserId());
+                    TempData["ErrorMessage"] = "An error occurred while updating the client.";
+                }
             }
             return View(client);
         }
@@ -191,34 +208,43 @@ namespace ProTrack.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var userId = GetCurrentUserId();
-            var client = await _context.Clients
-                .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-
-            if (client != null)
+            try
             {
-                // Check if client has associated projects or invoices
-                var hasProjects = await _context.Projects.AnyAsync(p => p.ClientId == id);
-                var hasInvoices = await _context.Invoices.AnyAsync(i => i.ClientId == id);
+                var userId = GetCurrentUserId();
+                var client = await _context.Clients
+                    .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
 
-                if (hasProjects || hasInvoices)
+                if (client != null)
                 {
-                    // Soft delete - mark as inactive instead of hard delete
-                    client.IsActive = false;
-                    _context.Update(client);
-                    TempData["InfoMessage"] = "Client has been deactivated due to existing projects or invoices.";
-                }
-                else
-                {
-                    // Hard delete - no dependencies
-                    _context.Clients.Remove(client);
-                    TempData["SuccessMessage"] = "Client deleted successfully.";
+                    // Check if client has associated projects or invoices
+                    var hasProjects = await _context.Projects.AnyAsync(p => p.ClientId == id);
+                    var hasInvoices = await _context.Invoices.AnyAsync(i => i.ClientId == id);
+
+                    if (hasProjects || hasInvoices)
+                    {
+                        // Soft delete - mark as inactive instead of hard delete
+                        client.IsActive = false;
+                        _context.Update(client);
+                        TempData["InfoMessage"] = "Client has been deactivated due to existing projects or invoices.";
+                    }
+                    else
+                    {
+                        // Hard delete - no dependencies
+                        _context.Clients.Remove(client);
+                        TempData["SuccessMessage"] = "Client deleted successfully.";
+                    }
+
+                    await _context.SaveChangesAsync();
                 }
 
-                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
             }
-
-            return RedirectToAction(nameof(Index));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting client {ClientId} for user {UserId}", id, GetCurrentUserId());
+                TempData["ErrorMessage"] = "An error occurred while deleting the client.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // GET: Clients/Deactivate/5
@@ -275,9 +301,17 @@ namespace ProTrack.Controllers
         [HttpGet]
         public async Task<IActionResult> IsClientNameUnique(string name, int? id)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return Json(false);
+            }
+
             var userId = GetCurrentUserId();
+            // Use case-insensitive comparison - EF Core translates this to SQL COLLATE
             var exists = await _context.Clients
-                .AnyAsync(c => c.UserId == userId && c.Name.ToLower() == name.ToLower() && c.Id != id);
+                .AnyAsync(c => c.UserId == userId && 
+                               c.Name.ToLower() == name.ToLower() && 
+                               (id == null || c.Id != id));
 
             return Json(!exists);
         }

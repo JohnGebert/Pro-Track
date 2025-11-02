@@ -62,11 +62,57 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-// Ensure database is created and seeded
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-}
+// Ensure database is created and seeded, and set demo user password
+await InitializeDatabaseAsync(app);
 
-app.Run();
+await app.RunAsync();
+
+static async Task InitializeDatabaseAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    // Use EnsureCreated only in development; production should use migrations
+    if (app.Environment.IsDevelopment())
+    {
+        context.Database.EnsureCreated();
+    }
+    else
+    {
+        // In production, ensure migrations are applied
+        // Note: In production, migrations should be applied via deployment scripts, not in application startup
+        logger.LogWarning("Database initialization skipped in production. Ensure migrations are applied.");
+    }
+    
+    // Set password for demo user if it doesn't have one (only in development)
+    if (app.Environment.IsDevelopment())
+    {
+        var demoPassword = app.Configuration["DemoUser:Password"] ?? "Demo123!";
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var demoUser = await userManager.FindByIdAsync("demo-user-123");
+        
+        if (demoUser != null && string.IsNullOrEmpty(demoUser.PasswordHash))
+        {
+            var result = await userManager.AddPasswordAsync(demoUser, demoPassword);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("✓ Demo user password set successfully!");
+                logger.LogInformation("  Email: demo@protrack.com");
+                logger.LogInformation("  Password: [REDACTED]");
+            }
+            else
+            {
+                logger.LogError("✗ Failed to set demo user password:");
+                foreach (var error in result.Errors)
+                {
+                    logger.LogError("  - {ErrorDescription}", error.Description);
+                }
+            }
+        }
+        else if (demoUser != null && !string.IsNullOrEmpty(demoUser.PasswordHash))
+        {
+            logger.LogInformation("✓ Demo user already has a password set.");
+        }
+    }
+}

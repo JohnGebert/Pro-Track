@@ -8,9 +8,7 @@ using System.Security.Claims;
 
 namespace ProTrack.Controllers
 {
-    /// <summary>
     /// Projects controller handling project management functionality
-    /// </summary>
     [Authorize]
     public class ProjectsController : Controller
     {
@@ -22,11 +20,8 @@ namespace ProTrack.Controllers
             _context = context;
             _logger = logger;
         }
-
-        /// <summary>
         /// Display list of projects for the current user with optional search functionality
         /// Supports wildcard search using * for any characters
-        /// </summary>
         /// <param name="searchTerm">Optional search term to filter projects (supports * wildcard)</param>
         /// <returns>Projects index view</returns>
         public async Task<IActionResult> Index(string searchTerm)
@@ -43,14 +38,18 @@ namespace ProTrack.Controllers
                 // Apply search filter if search term is provided
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    // Convert wildcard * to SQL LIKE pattern %
-                    string searchPattern = searchTerm.Replace("*", "%");
+                    // Sanitize search term: convert wildcard * to SQL LIKE pattern %, escape SQL wildcards
+                    string sanitizedTerm = searchTerm
+                        .Replace("%", "[%]")
+                        .Replace("_", "[_]")
+                        .Replace("[", "[[]")
+                        .Replace("*", "%");
                     
                     // Search across multiple fields: Title, Description, Client Name
                     projectsQuery = projectsQuery.Where(p =>
-                        EF.Functions.Like(p.Title, $"%{searchPattern}%") ||
-                        EF.Functions.Like(p.Description ?? "", $"%{searchPattern}%") ||
-                        EF.Functions.Like(p.Client.Name, $"%{searchPattern}%")
+                        EF.Functions.Like(p.Title, $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(p.Description ?? "", $"%{sanitizedTerm}%") ||
+                        EF.Functions.Like(p.Client.Name, $"%{sanitizedTerm}%")
                     );
                     
                     ViewBag.SearchTerm = searchTerm;
@@ -69,10 +68,7 @@ namespace ProTrack.Controllers
                 return View(new List<Project>());
             }
         }
-
-        /// <summary>
         /// Display project details
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <returns>Project details view</returns>
         public async Task<IActionResult> Details(int? id)
@@ -105,10 +101,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Display create project form
-        /// </summary>
         /// <returns>Create project view</returns>
         public async Task<IActionResult> Create()
         {
@@ -133,10 +126,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Create new project
-        /// </summary>
         /// <param name="project">Project data</param>
         /// <returns>Redirect to projects index</returns>
         [HttpPost]
@@ -195,10 +185,7 @@ namespace ProTrack.Controllers
 
             return View(project);
         }
-
-        /// <summary>
         /// Display edit project form
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <returns>Edit project view</returns>
         public async Task<IActionResult> Edit(int? id)
@@ -237,10 +224,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Update project
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <param name="project">Updated project data</param>
         /// <returns>Redirect to projects index</returns>
@@ -316,10 +300,7 @@ namespace ProTrack.Controllers
 
             return View(project);
         }
-
-        /// <summary>
         /// Display delete confirmation
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <returns>Delete confirmation view</returns>
         public async Task<IActionResult> Delete(int? id)
@@ -352,10 +333,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Delete project
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <returns>Redirect to projects index</returns>
         [HttpPost, ActionName("Delete")]
@@ -395,10 +373,7 @@ namespace ProTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        /// <summary>
         /// Check if project exists for current user
-        /// </summary>
         /// <param name="id">Project ID</param>
         /// <returns>True if project exists</returns>
         private bool ProjectExists(int id)
@@ -406,10 +381,7 @@ namespace ProTrack.Controllers
             var userId = GetCurrentUserId();
             return _context.Projects.Any(e => e.Id == id && e.UserId == userId);
         }
-
-        /// <summary>
         /// Get current user ID from claims
-        /// </summary>
         /// <returns>Current user ID</returns>
         private string GetCurrentUserId()
         {

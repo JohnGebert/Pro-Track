@@ -6,9 +6,7 @@ using System.Security.Claims;
 
 namespace ProTrack.Controllers
 {
-    /// <summary>
     /// Home controller handling the main dashboard and landing page
-    /// </summary>
     [Authorize]
     public class HomeController : Controller
     {
@@ -20,10 +18,7 @@ namespace ProTrack.Controllers
             _context = context;
             _logger = logger;
         }
-
-        /// <summary>
         /// Main dashboard page displaying overview statistics and recent activity
-        /// </summary>
         /// <returns>Dashboard view with statistics</returns>
         public async Task<IActionResult> Index()
         {
@@ -43,29 +38,21 @@ namespace ProTrack.Controllers
                 return View(new DashboardViewModel());
             }
         }
-
-        /// <summary>
         /// Privacy policy page
-        /// </summary>
         /// <returns>Privacy view</returns>
         public IActionResult Privacy()
         {
             return View();
         }
 
-        /// <summary>
         /// Error page handler
-        /// </summary>
         /// <returns>Error view</returns>
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
             return View();
         }
-
-        /// <summary>
         /// Retrieves dashboard statistics for the current user
-        /// </summary>
         /// <param name="userId">Current user ID</param>
         /// <returns>Dashboard statistics</returns>
         private async Task<DashboardViewModel> GetDashboardStatistics(string userId)
@@ -166,20 +153,14 @@ namespace ProTrack.Controllers
 
             return stats;
         }
-
-        /// <summary>
         /// Gets the current user ID from claims
-        /// </summary>
         /// <returns>Current user ID</returns>
         private string GetCurrentUserId()
         {
             return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         }
     }
-
-    /// <summary>
     /// View model for dashboard statistics
-    /// </summary>
     public class DashboardViewModel
     {
         public string UserId { get; set; } = string.Empty;
@@ -201,10 +182,7 @@ namespace ProTrack.Controllers
         public List<RecentProjectViewModel> RecentProjects { get; set; } = new();
         public List<RecentTimeEntryViewModel> RecentTimeEntries { get; set; } = new();
     }
-
-    /// <summary>
     /// View model for recent client activity
-    /// </summary>
     public class RecentClientViewModel
     {
         public int Id { get; set; }
@@ -212,10 +190,7 @@ namespace ProTrack.Controllers
         public DateTime CreatedDate { get; set; }
         public int ProjectCount { get; set; }
     }
-
-    /// <summary>
     /// View model for recent project activity
-    /// </summary>
     public class RecentProjectViewModel
     {
         public int Id { get; set; }
@@ -225,10 +200,7 @@ namespace ProTrack.Controllers
         public DateTime CreatedDate { get; set; }
         public decimal HourlyRate { get; set; }
     }
-
-    /// <summary>
     /// View model for recent time entry activity
-    /// </summary>
     public class RecentTimeEntryViewModel
     {
         public int Id { get; set; }
