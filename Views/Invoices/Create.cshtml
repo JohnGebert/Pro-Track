@@ -14,7 +14,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form asp-action="Create">
+                    <form asp-action="Create" id="invoiceForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         
                         <div class="row mb-3">
@@ -59,6 +59,40 @@
                             <span asp-validation-for="Notes" class="text-danger"></span>
                         </div>
 
+                        <div class="card mb-3 border-warning-subtle">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-magic me-2 text-warning"></i>AI Invoice Notes Assistant
+                                    </h5>
+                                    <span class="badge bg-light text-dark">Beta</span>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    Describe the work briefly and let the assistant draft polished, client-ready invoice notes.
+                                </p>
+                                <div class="mb-3">
+                                    <label for="invoiceAiPromptInput" class="form-label">What should we include?</label>
+                                    <textarea id="invoiceAiPromptInput" class="form-control" rows="2" placeholder="e.g., Summarize discovery workshop deliverables and highlight upcoming milestones"></textarea>
+                                </div>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-outline-warning" id="invoiceGenerateBtn">
+                                        <i class="fas fa-robot me-1"></i>Generate Notes
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="invoiceAppendBtn" disabled>
+                                        <i class="fas fa-plus me-1"></i>Append to Notes
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="invoiceReplaceBtn" disabled>
+                                        <i class="fas fa-check me-1"></i>Use Notes
+                                    </button>
+                                </div>
+                                <div id="invoiceAiStatus" class="text-muted small"></div>
+                                <div id="invoiceAiSuggestion" class="alert alert-warning d-none mt-3" role="alert">
+                                    <strong>Suggested Notes</strong>
+                                    <p class="mb-0" id="invoiceAiSuggestionBody"></p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between">
                             <a asp-action="Index" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Back to List
@@ -76,5 +110,131 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('invoiceForm');
+            if (!form) {
+                return;
+            }
+
+            const promptInput = document.getElementById('invoiceAiPromptInput');
+            const generateBtn = document.getElementById('invoiceGenerateBtn');
+            const appendBtn = document.getElementById('invoiceAppendBtn');
+            const replaceBtn = document.getElementById('invoiceReplaceBtn');
+            const statusEl = document.getElementById('invoiceAiStatus');
+            const suggestionContainer = document.getElementById('invoiceAiSuggestion');
+            const suggestionBody = document.getElementById('invoiceAiSuggestionBody');
+            const notesField = document.getElementById('Notes');
+
+            const clientSelect = document.getElementById('clientSelect');
+            const totalAmountInput = document.getElementById('TotalAmount');
+            const invoiceDateInput = document.getElementById('InvoiceDate');
+            const dueDateInput = document.getElementById('DueDate');
+
+            let latestSuggestion = '';
+
+            function setStatus(message, isError = false) {
+                statusEl.textContent = message || '';
+                statusEl.classList.toggle('text-danger', Boolean(isError));
+            }
+
+            function toggleButtons(isGenerating) {
+                generateBtn.disabled = isGenerating;
+                appendBtn.disabled = isGenerating || !latestSuggestion;
+                replaceBtn.disabled = isGenerating || !latestSuggestion;
+            }
+
+            function parseAmount(value) {
+                if (!value) {
+                    return null;
+                }
+                const parsed = parseFloat(value);
+                return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null;
+            }
+
+            function sanitizeDate(value) {
+                return value ? value : null;
+            }
+
+            async function generateNotes() {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    setStatus('Enter a short prompt describing the invoice contents.', true);
+                    promptInput.focus();
+                    return;
+                }
+
+                const tokenField = form.querySelector('input[name="__RequestVerificationToken"]');
+                const requestToken = tokenField ? tokenField.value : '';
+
+                const clientId = clientSelect && clientSelect.value ? parseInt(clientSelect.value, 10) : null;
+                const totalAmount = parseAmount(totalAmountInput ? totalAmountInput.value : null);
+                const invoiceDate = sanitizeDate(invoiceDateInput ? invoiceDateInput.value : null);
+                const dueDate = sanitizeDate(dueDateInput ? dueDateInput.value : null);
+
+                toggleButtons(true);
+                setStatus('Generating notes…');
+                suggestionContainer.classList.add('d-none');
+                suggestionBody.textContent = '';
+                latestSuggestion = '';
+
+                try {
+                    const response = await fetch('@Url.Action("GenerateNotes", "Invoices")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': requestToken
+                        },
+                        body: JSON.stringify({
+                            prompt,
+                            clientId,
+                            totalAmount,
+                            invoiceDate,
+                            dueDate
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.notes) {
+                        latestSuggestion = data.notes.trim();
+                        suggestionBody.textContent = latestSuggestion;
+                        suggestionContainer.classList.remove('d-none');
+                        setStatus('Notes ready. Append or replace the existing text using the buttons above.');
+                    } else {
+                        const message = data.message || 'Unable to generate notes right now.';
+                        setStatus(message, true);
+                    }
+                } catch (error) {
+                    console.error('AI invoice notes error:', error);
+                    setStatus('Something went wrong while contacting the AI assistant.', true);
+                } finally {
+                    toggleButtons(false);
+                }
+            }
+
+            generateBtn.addEventListener('click', generateNotes);
+
+            appendBtn.addEventListener('click', function () {
+                if (!latestSuggestion) {
+                    return;
+                }
+
+                const existing = notesField.value.trim();
+                notesField.value = existing
+                    ? `${existing}\n\n${latestSuggestion}`
+                    : latestSuggestion;
+                setStatus('Suggestion appended to the notes field.');
+            });
+
+            replaceBtn.addEventListener('click', function () {
+                if (!latestSuggestion) {
+                    return;
+                }
+                notesField.value = latestSuggestion;
+                setStatus('Notes replaced with the AI suggestion.');
+            });
+        });
+    </script>
 }
 

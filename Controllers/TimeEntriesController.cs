@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ProTrack.Data;
 using ProTrack.Models;
+using ProTrack.Services;
 using System.Security.Claims;
 
 namespace ProTrack.Controllers
@@ -14,11 +15,16 @@ namespace ProTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TimeEntriesController> _logger;
+        private readonly IAiDescriptionService _aiDescriptionService;
 
-        public TimeEntriesController(ApplicationDbContext context, ILogger<TimeEntriesController> logger)
+        public TimeEntriesController(
+            ApplicationDbContext context,
+            ILogger<TimeEntriesController> logger,
+            IAiDescriptionService aiDescriptionService)
         {
             _context = context;
             _logger = logger;
+            _aiDescriptionService = aiDescriptionService;
         }
         /// Display list of time entries for the current user with optional search functionality
         /// Supports wildcard search using * for any characters
@@ -412,6 +418,62 @@ namespace ProTrack.Controllers
                 return Json(new { success = false, message = "An error occurred while updating the time entry." });
             }
         }
+        /// <summary>
+        /// Generates an AI-assisted description for a time entry.
+        /// </summary>
+        /// <param name="request">User prompt and context for the description.</param>
+        /// <returns>JSON result containing the generated description.</returns>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateDescription([FromBody] GenerateAiDescriptionRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Prompt))
+            {
+                return Json(new { success = false, message = "Please provide a brief prompt so we can generate a description." });
+            }
+
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                string? projectName = null;
+                if (request.ProjectId.HasValue)
+                {
+                    var project = await _context.Projects
+                        .Include(p => p.Client)
+                        .FirstOrDefaultAsync(p => p.Id == request.ProjectId.Value && p.UserId == userId);
+
+                    if (project != null)
+                    {
+                        projectName = project.Client != null
+                            ? $"{project.Title} ({project.Client.Name})"
+                            : project.Title;
+                    }
+                }
+
+                var aiRequest = new AiDescriptionRequest
+                {
+                    Prompt = request.Prompt,
+                    ProjectName = projectName,
+                    DurationHours = request.DurationHours,
+                    AdditionalContext = request.AdditionalContext
+                };
+
+                var result = await _aiDescriptionService.GenerateDescriptionAsync(aiRequest);
+
+                if (!result.Success)
+                {
+                    return Json(new { success = false, message = result.Error ?? "The AI assistant could not generate a description." });
+                }
+
+                return Json(new { success = true, description = result.Description });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating AI description for user {UserId}", GetCurrentUserId());
+                return Json(new { success = false, message = "An unexpected error occurred while generating the description." });
+            }
+        }
         /// Check if time entry exists for current user
         /// <param name="id">Time entry ID</param>
         /// <returns>True if time entry exists</returns>
@@ -425,6 +487,17 @@ namespace ProTrack.Controllers
         private string GetCurrentUserId()
         {
             return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Request body used when calling the AI description endpoint.
+        /// </summary>
+        public class GenerateAiDescriptionRequest
+        {
+            public string Prompt { get; set; } = string.Empty;
+            public int? ProjectId { get; set; }
+            public decimal? DurationHours { get; set; }
+            public string? AdditionalContext { get; set; }
         }
     }
 }

@@ -14,7 +14,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form asp-action="Edit">
+                    <form asp-action="Edit" id="timeEntryForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="Id" />
                         <input type="hidden" asp-for="UserId" />
@@ -49,6 +49,40 @@
                             <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
 
+                        <div class="card mb-3 border-primary-subtle">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-magic me-2 text-primary"></i>AI Description Assistant
+                                    </h5>
+                                    <span class="badge bg-light text-dark">Beta</span>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    Need to rephrase? Enter a quick prompt and generate a polished, billable description.
+                                </p>
+                                <div class="mb-3">
+                                    <label for="aiPromptInput" class="form-label">What should we highlight?</label>
+                                    <textarea id="aiPromptInput" class="form-control" rows="2" placeholder="e.g., Rephrase to emphasize deliverables and testing coverage"></textarea>
+                                </div>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-outline-primary" id="generateDescriptionBtn">
+                                        <i class="fas fa-robot me-1"></i>Generate Description
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="appendDescriptionBtn" disabled>
+                                        <i class="fas fa-plus me-1"></i>Append to Description
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="replaceDescriptionBtn" disabled>
+                                        <i class="fas fa-check me-1"></i>Use Description
+                                    </button>
+                                </div>
+                                <div id="aiStatus" class="text-muted small"></div>
+                                <div id="aiSuggestion" class="alert alert-primary d-none mt-3" role="alert">
+                                    <strong>Suggested Description</strong>
+                                    <p class="mb-0" id="aiSuggestionBody"></p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" asp-for="IsBilled" />
                             <label class="form-check-label" asp-for="IsBilled">
@@ -73,5 +107,135 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('timeEntryForm');
+            if (!form) {
+                return;
+            }
+
+            const promptInput = document.getElementById('aiPromptInput');
+            const generateBtn = document.getElementById('generateDescriptionBtn');
+            const appendBtn = document.getElementById('appendDescriptionBtn');
+            const replaceBtn = document.getElementById('replaceDescriptionBtn');
+            const statusEl = document.getElementById('aiStatus');
+            const suggestionContainer = document.getElementById('aiSuggestion');
+            const suggestionBody = document.getElementById('aiSuggestionBody');
+            const descriptionField = document.getElementById('Description');
+
+            const projectSelect = document.getElementById('ProjectId');
+            const startInput = document.getElementById('StartTime');
+            const endInput = document.getElementById('EndTime');
+
+            let latestSuggestion = '';
+
+            function setStatus(message, isError = false) {
+                statusEl.textContent = message || '';
+                statusEl.classList.toggle('text-danger', Boolean(isError));
+            }
+
+            function toggleButtons(isGenerating) {
+                generateBtn.disabled = isGenerating;
+                appendBtn.disabled = isGenerating || !latestSuggestion;
+                replaceBtn.disabled = isGenerating || !latestSuggestion;
+            }
+
+            function calculateDurationHours(startValue, endValue) {
+                if (!startValue || !endValue) {
+                    return null;
+                }
+
+                const start = new Date(startValue);
+                const end = new Date(endValue);
+                const diffMs = end - start;
+
+                if (Number.isNaN(diffMs) || diffMs <= 0) {
+                    return null;
+                }
+
+                const hours = diffMs / (1000 * 60 * 60);
+                return Math.round(hours * 100) / 100;
+            }
+
+            async function generateDescription() {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    setStatus('Enter a short prompt so we know what to generate.', true);
+                    promptInput.focus();
+                    return;
+                }
+
+                const tokenField = form.querySelector('input[name="__RequestVerificationToken"]');
+                const requestToken = tokenField ? tokenField.value : '';
+
+                const durationHours = calculateDurationHours(startInput.value, endInput.value);
+                const projectId = projectSelect && projectSelect.value ? parseInt(projectSelect.value, 10) : null;
+                const projectName = projectSelect && projectSelect.value
+                    ? projectSelect.options[projectSelect.selectedIndex].text
+                    : null;
+
+                toggleButtons(true);
+                setStatus('Generating description…');
+                suggestionContainer.classList.add('d-none');
+                suggestionBody.textContent = '';
+                latestSuggestion = '';
+
+                try {
+                    const response = await fetch('@Url.Action("GenerateDescription", "TimeEntries")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': requestToken
+                        },
+                        body: JSON.stringify({
+                            prompt,
+                            projectId,
+                            durationHours,
+                            additionalContext: projectName ? `Project selection: ${projectName}` : null
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.description) {
+                        latestSuggestion = data.description.trim();
+                        suggestionBody.textContent = latestSuggestion;
+                        suggestionContainer.classList.remove('d-none');
+                        setStatus('Suggestion ready. Use the buttons above to apply it.');
+                    } else {
+                        const message = data.message || 'Unable to generate a description right now.';
+                        setStatus(message, true);
+                    }
+                } catch (error) {
+                    console.error('AI description error:', error);
+                    setStatus('Something went wrong while contacting the AI assistant.', true);
+                } finally {
+                    toggleButtons(false);
+                }
+            }
+
+            generateBtn.addEventListener('click', generateDescription);
+
+            appendBtn.addEventListener('click', function () {
+                if (!latestSuggestion) {
+                    return;
+                }
+
+                const existing = descriptionField.value.trim();
+                descriptionField.value = existing
+                    ? `${existing}\n\n${latestSuggestion}`
+                    : latestSuggestion;
+                setStatus('Suggestion appended to the description field.');
+            });
+
+            replaceBtn.addEventListener('click', function () {
+                if (!latestSuggestion) {
+                    return;
+                }
+                descriptionField.value = latestSuggestion;
+                setStatus('Description replaced with the AI suggestion.');
+            });
+        });
+    </script>
 }
 

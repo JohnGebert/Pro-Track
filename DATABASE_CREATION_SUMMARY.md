@@ -34,16 +34,19 @@ The ProTrack database has been successfully created with all required tables, re
 - **Name**: Demo User
 - **Company**: Demo Company
 
-### Demo Clients (2):
-1. **Tech Innovators Corp**
-   - Email: contact@techinnovators.com
-   - Phone: +1-555-TECH-001
-   - Address: 456 Innovation Drive, Silicon Valley, CA 94000
-
-2. **Global Marketing Agency**
-   - Email: info@globalmarketing.com
-   - Phone: +1-555-MARKET-02
-   - Address: 789 Marketing Boulevard, New York, NY 10001
+### Demo Clients (12):
+1. **Tech Innovators Corp** – contact@techinnovators.com, +1-555-TECH-001, 456 Innovation Drive, Silicon Valley, CA 94000
+2. **Global Marketing Agency** – info@globalmarketing.com, +1-555-MARKET-02, 789 Marketing Boulevard, New York, NY 10001
+3. **Creative Vision Studios** – hello@creativevision.com, +1-555-CREATIVE, 1010 Inspiration Lane, Los Angeles, CA 90012
+4. **Northwind Logistics** – ops@northwindlogistics.com, +1-555-NORTH-01, 820 Freight Avenue, Chicago, IL 60654
+5. **BrightPath Consulting** – team@brightpathco.com, +1-555-BRIGHT-5, 550 Strategy Street, Austin, TX 78701
+6. **Summit Financial Group** – info@summitfg.com, +1-555-SUMMIT-6, 300 Peaks Plaza, Denver, CO 80202
+7. **GreenEarth Initiatives** – contact@greenearth.org, +1-555-GREEN-07, 88 Sustainability Way, Portland, OR 97205
+8. **Apex Healthcare Solutions** – support@apexhealth.com, +1-555-APEX-CARE, 212 Wellness Parkway, Boston, MA 02110
+9. **BlueWave Analytics** – partners@bluewaveanalytics.com, +1-555-WAVE-009, 77 Insight Terrace, Seattle, WA 98104
+10. **UrbanEdge Architects** – studio@urbanedgearch.com, +1-555-URBAN-10, 640 Skyline Boulevard, Miami, FL 33130
+11. **Silverline Retailers** – hq@silverlineretail.com, +1-555-SILVER-1, 400 Commerce Court, Minneapolis, MN 55401
+12. **NextGen Manufacturing** – projects@nextgenmfg.com, +1-555-NEXTGEN, 950 Innovation Parkway, Detroit, MI 48226
 
 ### Demo Projects (2):
 1. **Q4 E-commerce Platform Relaunch** (Tech Innovators Corp)

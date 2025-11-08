@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using ProTrack.Configuration;
 using ProTrack.Data;
 using ProTrack.Models;
+using ProTrack.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,10 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 
 // Add MVC controllers and views
 builder.Services.AddControllersWithViews();
+
+// Configure AI assistance for time entry descriptions
+builder.Services.Configure<AiDescriptionOptions>(builder.Configuration.GetSection("AiDescriptions"));
+builder.Services.AddHttpClient<IAiDescriptionService, OpenAiDescriptionService>();
 
 var app = builder.Build();
 

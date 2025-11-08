@@ -15,6 +15,7 @@
 - **Project Tracking**: Create and manage multiple projects per client with status tracking
 - **Time Logging**: Record detailed time entries with descriptions and billable status
 - **Invoice Generation**: Create professional invoices linked to clients and time entries
+- **AI Assistants**: Generate polished time entry descriptions and professional invoice notes from quick prompts
 - **User Authentication**: Secure login and registration with ASP.NET Core Identity
 - **Dashboard**: Overview of clients, projects, time entries, and revenue statistics
 - **Responsive Design**: Modern, mobile-friendly interface
@@ -320,6 +321,40 @@ Key settings can be modified in `appsettings.json`:
 - **Password Requirements**: Configured in `Program.cs` via Identity options
 - **Session Timeout**: Default ASP.NET Core settings
 - **HTTPS Redirect**: Configured for production environments
+
+### AI Assistants for Time Entries & Invoices
+
+The time entry and invoice forms include optional AI helpers that turn short prompts into professional descriptions and notes. The app never ships with an API key—you must supply your own via environment-managed configuration before the helpers appear.
+
+#### Quick Setup (per developer machine)
+
+1. Ensure you are in the project directory, then enable the assistants with your key using [.NET Secret Manager](https://learn.microsoft.com/aspnet/core/security/app-secrets):
+   ```bash
+   dotnet user-secrets set "AiDescriptions:Enabled" "true"
+   dotnet user-secrets set "AiDescriptions:ApiKey" "<your-api-key>"
+   dotnet user-secrets set "AiDescriptions:Model" "gpt-4o-mini"
+   ```
+2. If you are using Azure OpenAI (or another vendor that changes the URL), add:
+   ```bash
+   dotnet user-secrets set "AiDescriptions:BaseUrl" "https://<resource>.openai.azure.com/"
+   dotnet user-secrets set "AiDescriptions:Endpoint" "openai/deployments/<deployment>/chat/completions"
+   dotnet user-secrets set "AiDescriptions:ApiVersion" "2024-02-15-preview"
+   dotnet user-secrets set "AiDescriptions:AuthenticationScheme" "ApiKey"
+   ```
+3. Restart the application (`dotnet run`). Once the key is in place the AI widgets on the pages become visible automatically.
+
+#### Alternative: Environment Variables
+
+If you prefer, export variables instead of using Secret Manager:
+
+```powershell
+$env:AiDescriptions__Enabled = "true"
+$env:AiDescriptions__ApiKey = "<your-api-key>"
+$env:AiDescriptions__Model = "gpt-4o-mini"
+dotnet run
+```
+
+> **Security Tip**: Never commit API keys to source control or hard-code them in `appsettings`. Use secrets or environment variables so each user can plug in their own credentials safely.
 
 ## 🚀 Deployment
 

@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ProTrack.Data;
 using ProTrack.Models;
+using ProTrack.Services;
 using System.Security.Claims;
 using System.Linq;
+using System.Text;
 
 namespace ProTrack.Controllers
 {
@@ -15,11 +17,16 @@ namespace ProTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InvoicesController> _logger;
+        private readonly IAiDescriptionService _aiDescriptionService;
 
-        public InvoicesController(ApplicationDbContext context, ILogger<InvoicesController> logger)
+        public InvoicesController(
+            ApplicationDbContext context,
+            ILogger<InvoicesController> logger,
+            IAiDescriptionService aiDescriptionService)
         {
             _context = context;
             _logger = logger;
+            _aiDescriptionService = aiDescriptionService;
         }
 
         /// Display list of invoices for the current user with optional search functionality
@@ -475,6 +482,85 @@ namespace ProTrack.Controllers
                 return Json(new { success = false, message = "An error occurred while updating the invoice." });
             }
         }
+        /// <summary>
+        /// Generates AI-assisted invoice notes based on a short user prompt.
+        /// </summary>
+        /// <param name="request">Prompt and invoice metadata.</param>
+        /// <returns>JSON result with generated notes.</returns>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateNotes([FromBody] GenerateInvoiceNotesRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Prompt))
+            {
+                return Json(new { success = false, message = "Please provide a quick prompt so we can generate invoice notes." });
+            }
+
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                string? clientLabel = null;
+
+                if (request.ClientId.HasValue)
+                {
+                    var client = await _context.Clients
+                        .FirstOrDefaultAsync(c => c.Id == request.ClientId.Value && c.UserId == userId);
+
+                    if (client != null)
+                    {
+                        clientLabel = !string.IsNullOrWhiteSpace(client.Address)
+                            ? $"{client.Name} — {client.Address}"
+                            : client.Name;
+                    }
+                }
+
+                var contextBuilder = new StringBuilder();
+
+                if (!string.IsNullOrWhiteSpace(clientLabel))
+                {
+                    contextBuilder.AppendLine($"Client: {clientLabel}");
+                }
+
+                if (request.TotalAmount.HasValue)
+                {
+                    contextBuilder.AppendLine($"Invoice Total: ${request.TotalAmount.Value:F2}");
+                }
+
+                if (request.InvoiceDate.HasValue)
+                {
+                    contextBuilder.AppendLine($"Invoice Date: {request.InvoiceDate.Value:MMM dd, yyyy}");
+                }
+
+                if (request.DueDate.HasValue)
+                {
+                    var referenceDate = request.InvoiceDate ?? DateTime.UtcNow;
+                    var dueInDays = (int)Math.Round((request.DueDate.Value.Date - referenceDate.Date).TotalDays);
+                    contextBuilder.AppendLine($"Due Date: {request.DueDate.Value:MMM dd, yyyy} ({dueInDays} day terms)");
+                }
+
+                var aiRequest = new AiDescriptionRequest
+                {
+                    Prompt = request.Prompt,
+                    ProjectName = clientLabel,
+                    AdditionalContext = contextBuilder.Length > 0 ? contextBuilder.ToString().Trim() : null
+                };
+
+                var result = await _aiDescriptionService.GenerateDescriptionAsync(aiRequest);
+
+                if (!result.Success)
+                {
+                    return Json(new { success = false, message = result.Error ?? "The assistant could not generate notes right now." });
+                }
+
+                return Json(new { success = true, notes = result.Description });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating AI invoice notes for user {UserId}", GetCurrentUserId());
+                return Json(new { success = false, message = "An unexpected error occurred while generating notes." });
+            }
+        }
         /// Generate invoice from time entries
         /// <param name="clientId">Client ID</param>
         /// <param name="projectId">Project ID (optional)</param>
@@ -578,6 +664,18 @@ namespace ProTrack.Controllers
         private string GetCurrentUserId()
         {
             return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Request payload for AI-generated invoice notes.
+        /// </summary>
+        public class GenerateInvoiceNotesRequest
+        {
+            public string Prompt { get; set; } = string.Empty;
+            public int? ClientId { get; set; }
+            public decimal? TotalAmount { get; set; }
+            public DateTime? InvoiceDate { get; set; }
+            public DateTime? DueDate { get; set; }
         }
     }
 }
