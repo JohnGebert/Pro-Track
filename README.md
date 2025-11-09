@@ -66,7 +66,7 @@ Before you begin, ensure you have the following installed:
    - Open your browser and navigate to: `http://localhost:5000`
    - Login with demo credentials:
      - **Email**: `demo@protrack.com`
-     - **Password**: (you'll need to set this during first run)
+     - **Password**: (you'll need to set this during first run) - Demo123!
 
 ### Option 2: Download ZIP
 
