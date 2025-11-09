@@ -8,6 +8,9 @@
 
 **ProTrack** is a comprehensive web-based application designed for freelancers and small businesses to efficiently manage clients, projects, time entries, and invoicing. Built with ASP.NET Core MVC and Entity Framework Core, it provides a robust solution for tracking billable hours and generating professional invoices.
 
+##Presentation Link##
+https://studentsecpi-my.sharepoint.com/:p:/r/personal/johgeb8270_students_ecpi_edu/Documents/Pro-Track%20Freelance%20Project%20Tracker%20%26%20Invoicing%20System.pptx?d=wa11dfd593d934fef9fc2dd9b63bfca33&csf=1&web=1&e=0TIEW9. 
+
 ## 🌟 Features
 
 ### Phase 1 (Current Release)
